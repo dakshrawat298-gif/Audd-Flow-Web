@@ -6,6 +6,7 @@ import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import WalletModal from '../../components/WalletModal'
 import ConfirmModal from '../../components/ConfirmModal'
+import { useSOLBalance } from '../../hooks/useSOLBalance'
 import {
   Send,
   ArrowUpRight,
@@ -18,12 +19,8 @@ import {
   ExternalLink,
   Zap,
   RefreshCw,
+  Loader,
 } from 'lucide-react'
-
-// TODO: Connect to Poof for Seeker On-Chain Backend here
-async function fetchWalletBalance(address) {
-  return { sol: 4.827, usd: 721.43 }
-}
 
 // TODO: Connect to Poof for Seeker On-Chain Backend here
 async function fetchTransactionHistory(address) {
@@ -56,6 +53,10 @@ export default function DashboardPage() {
   const [formData, setFormData] = useState({ recipient: '', amount: '', memo: '' })
   const [pendingAction, setPendingAction] = useState(null)
   const [copied, setCopied] = useState(false)
+
+  // Fetch real SOL balance via useSOLBalance hook
+  // TODO: Connect to Poof for Seeker On-Chain Backend here
+  const { balance, loading: balanceLoading, error: balanceError, refresh: refreshBalance } = useSOLBalance(30000)
 
   const handleConnect = (name) => {
     setWalletConnected(true)
@@ -114,13 +115,33 @@ export default function DashboardPage() {
             </div>
             {walletConnected ? (
               <>
-                <p className="text-3xl font-bold text-white mb-0.5">$721.43</p>
-                <p className="text-white/40 text-sm">4.827 SOL</p>
+                {balanceLoading ? (
+                  <div className="flex items-center gap-2 mb-1">
+                    <Loader size={16} className="text-white/30 animate-spin" />
+                    <span className="text-white/30 text-sm">Fetching balance…</span>
+                  </div>
+                ) : balanceError ? (
+                  <div className="mb-1">
+                    <p className="text-red-400/70 text-sm">Failed to fetch balance</p>
+                    <button onClick={refreshBalance} className="text-white/30 text-xs hover:text-white/60 transition-colors mt-1">
+                      Retry
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-3xl font-bold text-white mb-0.5">
+                      {balance !== null ? `${balance.toFixed(4)} SOL` : '— SOL'}
+                    </p>
+                    <p className="text-white/40 text-sm">Live balance · devnet</p>
+                  </>
+                )}
                 <div className="mt-4 flex items-center gap-2">
                   <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
                     <div className="h-full w-3/4 rounded-full" style={{ background: 'linear-gradient(90deg, #9945FF, #14F195)' }} />
                   </div>
-                  <span className="text-green-400 text-xs font-medium">+3.2%</span>
+                  <button onClick={refreshBalance} className="text-white/20 hover:text-white/50 transition-colors" title="Refresh balance">
+                    <RefreshCw size={12} />
+                  </button>
                 </div>
               </>
             ) : (

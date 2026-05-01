@@ -1,0 +1,52 @@
+Act as my Senior Frontend Engineer. We are integrating our Solana on-chain backend (generated via Poof for Seeker) into our existing "Audd Flow Web" Next.js UI. 
+
+To prevent errors, we will do this safely, one step at a time. Our first step is to implement the "Fetch SOL Balance" feature.
+
+Please execute the following steps precisely:
+1. Ensure the required Solana packages (`@solana/web3.js`, `@solana/wallet-adapter-react`, `@solana/wallet-adapter-react-ui`, `@solana/wallet-adapter-wallets`, and `@solana/wallet-adapter-base`) are installed.
+2. Ensure our entire app (e.g., `layout.tsx` or `_app.tsx`) is properly wrapped with Solana's `ConnectionProvider` and `WalletProvider` so the hooks can function. Use a standard mainnet or devnet RPC URL for the connection.
+3. Create a new folder named `hooks` in the project root (if it doesn't exist).
+4. Inside the `hooks` folder, create a file named `useSOLBalance.ts` and paste the EXACT code provided below.
+5. Update our Dashboard UI component: Import this hook and replace the static/dummy "Portfolio Value" balance with the real fetched balance.
+
+Here is the exact code for `hooks/useSOLBalance.ts`:
+```typescript
+import { useState, useEffect, useCallback } from 'react';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+
+export function useSOLBalance(pollIntervalMs = 0) {
+  const { connection } = useConnection();
+  const { publicKey } = useWallet();
+  const [balance, setBalance] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!publicKey) {
+      setBalance(null);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const lamports = await connection.getBalance(publicKey, 'confirmed');
+      setBalance(lamports / LAMPORTS_PER_SOL);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch balance');
+      setBalance(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [connection, publicKey]);
+
+  useEffect(() => {
+    refresh();
+    if (pollIntervalMs > 0) {
+      const id = setInterval(refresh, pollIntervalMs);
+      return () => clearInterval(id);
+    }
+  }, [refresh, pollIntervalMs]);
+
+  return { balance, loading, error, refresh };
+}

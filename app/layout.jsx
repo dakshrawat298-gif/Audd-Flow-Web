@@ -1,5 +1,6 @@
 import { Inter } from 'next/font/google'
 import './globals.css'
+import SolanaProviders from '../components/SolanaProviders'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -17,7 +18,9 @@ export default function RootLayout({ children }) {
     <html lang="en" className={inter.className}>
       <body>
         <div className="noise-overlay" />
-        {children}
+        <SolanaProviders>
+          {children}
+        </SolanaProviders>
       </body>
     </html>
   )
