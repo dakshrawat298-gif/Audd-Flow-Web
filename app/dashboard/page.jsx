@@ -9,6 +9,7 @@ import WalletButton from '../../components/WalletButton'
 import ConfirmModal from '../../components/ConfirmModal'
 import { useSOLBalance } from '../../hooks/useSOLBalance'
 import { useSendSOL } from '../../hooks/useSendSOL'
+import { createPaymentLink } from '../../lib/createPaymentLink'
 import {
   Send,
   ArrowUpRight,
@@ -23,6 +24,7 @@ import {
   RefreshCw,
   Loader,
   X,
+  Link,
 } from 'lucide-react'
 
 // TODO: Connect to Poof for Seeker On-Chain Backend here
@@ -59,14 +61,52 @@ export default function DashboardPage() {
   const [copied, setCopied] = useState(false)
   const [successBanner, setSuccessBanner] = useState(null) // { signature }
 
+  // Payment link state
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState(null)
+  const [paymentLinkError, setPaymentLinkError] = useState(null)
+  const [paymentLinkCopied, setPaymentLinkCopied] = useState(false)
+
   const { balance, loading: balanceLoading, error: balanceError, refresh: refreshBalance } = useSOLBalance(30000)
   const { sendSOL, loading: sendLoading, error: sendError } = useSendSOL()
+
+  // Clear generated link when switching action tabs
+  const switchAction = (type) => {
+    setActiveAction(type)
+    setPaymentLinkUrl(null)
+    setPaymentLinkError(null)
+    setPaymentLinkCopied(false)
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!connected) { setVisible(true); return }
+
+    if (activeAction === 'payment_link') {
+      setPaymentLinkError(null)
+      try {
+        const url = createPaymentLink({
+          recipient: formData.recipient,
+          amount: formData.amount ? parseFloat(formData.amount) : undefined,
+          memo: formData.memo || undefined,
+        })
+        setPaymentLinkUrl(url)
+      } catch (err) {
+        setPaymentLinkError(err instanceof Error ? err.message : 'Failed to generate link')
+        setPaymentLinkUrl(null)
+      }
+      return
+    }
+
     setPendingAction({ type: activeAction, ...formData })
     setShowConfirmModal(true)
+  }
+
+  const copyPaymentLink = () => {
+    if (!paymentLinkUrl) return
+    navigator.clipboard.writeText(paymentLinkUrl).then(() => {
+      setPaymentLinkCopied(true)
+      setTimeout(() => setPaymentLinkCopied(false), 2000)
+    })
   }
 
   // Passed to ConfirmModal as onConfirmAction for the "send" flow
@@ -222,7 +262,7 @@ export default function DashboardPage() {
             {quickActions.map((a) => (
               <button
                 key={a.type}
-                onClick={() => setActiveAction(a.type)}
+                onClick={() => switchAction(a.type)}
                 className={`glass glass-hover rounded-2xl p-4 flex flex-col items-center gap-3 transition-all ${activeAction === a.type ? 'ring-1' : ''}`}
                 style={activeAction === a.type ? { borderColor: `${a.color}40` } : {}}
               >
@@ -265,11 +305,11 @@ export default function DashboardPage() {
                 {(activeAction === 'send' || activeAction === 'payment_link') && (
                   <div>
                     <label className="block text-white/40 text-xs uppercase tracking-wider mb-2">
-                      {activeAction === 'send' ? 'Recipient Address' : 'Payment Description'}
+                      Recipient Address
                     </label>
                     <input
                       type="text"
-                      placeholder={activeAction === 'send' ? 'Enter Solana wallet address...' : 'What is this payment for?'}
+                      placeholder="Enter Solana wallet address…"
                       className="input-glass"
                       value={formData.recipient}
                       onChange={(e) => setFormData({ ...formData, recipient: e.target.value })}
@@ -319,7 +359,10 @@ export default function DashboardPage() {
 
                 <div>
                   <label className="block text-white/40 text-xs uppercase tracking-wider mb-2">
-                    {activeAction === 'payment_link' ? 'Amount (SOL)' : activeAction === 'swap' ? 'Amount' : 'Amount (SOL)'}
+                    {activeAction === 'swap' ? 'Amount' : 'Amount (SOL)'}
+                    {activeAction === 'payment_link' && (
+                      <span className="text-white/20 normal-case ml-1">(optional)</span>
+                    )}
                   </label>
                   <div className="relative">
                     <input
@@ -330,7 +373,7 @@ export default function DashboardPage() {
                       className="input-glass pr-16"
                       value={formData.amount}
                       onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      required
+                      required={activeAction !== 'payment_link'}
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-medium">
                       SOL
@@ -351,13 +394,15 @@ export default function DashboardPage() {
                   />
                 </div>
 
-                <div
-                  className="glass rounded-xl p-3 flex items-center justify-between"
-                  style={{ border: '1px solid rgba(255,255,255,0.04)' }}
-                >
-                  <span className="text-white/30 text-xs">Estimated network fee</span>
-                  <span className="text-green-400 text-xs font-medium">~0.000005 SOL</span>
-                </div>
+                {activeAction !== 'payment_link' && (
+                  <div
+                    className="glass rounded-xl p-3 flex items-center justify-between"
+                    style={{ border: '1px solid rgba(255,255,255,0.04)' }}
+                  >
+                    <span className="text-white/30 text-xs">Estimated network fee</span>
+                    <span className="text-green-400 text-xs font-medium">~0.000005 SOL</span>
+                  </div>
+                )}
 
                 {sendError && activeAction === 'send' && (
                   <div
@@ -369,6 +414,16 @@ export default function DashboardPage() {
                   </div>
                 )}
 
+                {paymentLinkError && activeAction === 'payment_link' && (
+                  <div
+                    className="flex items-center gap-2 rounded-xl px-4 py-3"
+                    style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}
+                  >
+                    <AlertCircle size={13} className="text-red-400 shrink-0" />
+                    <p className="text-red-400/80 text-xs leading-relaxed">{paymentLinkError}</p>
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   disabled={sendLoading}
@@ -376,11 +431,65 @@ export default function DashboardPage() {
                 >
                   {sendLoading ? (
                     <><Loader size={15} className="animate-spin" /> Sending…</>
+                  ) : activeAction === 'payment_link' ? (
+                    <><Link size={15} />{connected ? 'Generate Payment Link' : 'Connect Wallet to Continue'}</>
                   ) : (
                     <><Send size={15} />{connected ? 'Review & Submit' : 'Connect Wallet to Continue'}</>
                   )}
                 </button>
               </form>
+
+              {/* ── Payment Link Result Card ── */}
+              {paymentLinkUrl && activeAction === 'payment_link' && (
+                <div
+                  className="mt-5 rounded-2xl p-5"
+                  style={{
+                    background: 'rgba(20,241,149,0.04)',
+                    border: '1px solid rgba(20,241,149,0.18)',
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ background: 'rgba(20,241,149,0.12)' }}
+                      >
+                        <Link size={13} style={{ color: '#14F195' }} />
+                      </div>
+                      <span className="text-white text-sm font-medium">Payment Link Ready</span>
+                    </div>
+                    <button
+                      onClick={() => { setPaymentLinkUrl(null); setPaymentLinkCopied(false) }}
+                      className="text-white/20 hover:text-white/50 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  <div
+                    className="rounded-xl px-4 py-3 mb-4 font-mono text-xs leading-relaxed break-all select-all cursor-text"
+                    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)' }}
+                  >
+                    {paymentLinkUrl}
+                  </div>
+
+                  <button
+                    onClick={copyPaymentLink}
+                    className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                    style={
+                      paymentLinkCopied
+                        ? { background: 'rgba(20,241,149,0.18)', color: '#14F195', border: '1px solid rgba(20,241,149,0.3)' }
+                        : { background: 'rgba(20,241,149,0.10)', color: '#14F195', border: '1px solid rgba(20,241,149,0.2)' }
+                    }
+                  >
+                    {paymentLinkCopied ? (
+                      <><CheckCircle size={14} /> Copied!</>
+                    ) : (
+                      <><Copy size={14} /> Copy to Clipboard</>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
