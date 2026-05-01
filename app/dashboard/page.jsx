@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import Navbar from '../../components/Navbar'
@@ -8,11 +8,13 @@ import Footer from '../../components/Footer'
 import WalletButton from '../../components/WalletButton'
 import ConfirmModal from '../../components/ConfirmModal'
 import { useSOLBalance } from '../../hooks/useSOLBalance'
+import { useSendSOL } from '../../hooks/useSendSOL'
 import {
   Send,
   ArrowUpRight,
   Clock,
   CheckCircle,
+  AlertCircle,
   Activity,
   Wallet,
   Copy,
@@ -20,16 +22,12 @@ import {
   Zap,
   RefreshCw,
   Loader,
+  X,
 } from 'lucide-react'
 
 // TODO: Connect to Poof for Seeker On-Chain Backend here
 async function fetchTransactionHistory(address) {
   return []
-}
-
-// TODO: Connect to Poof for Seeker On-Chain Backend here
-async function sendTransaction({ type, amount, recipient, memo }) {
-  return { signature: null, status: 'pending' }
 }
 
 const txHistory = [
@@ -59,8 +57,10 @@ export default function DashboardPage() {
   const [formData, setFormData] = useState({ recipient: '', amount: '', memo: '' })
   const [pendingAction, setPendingAction] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [successBanner, setSuccessBanner] = useState(null) // { signature }
 
   const { balance, loading: balanceLoading, error: balanceError, refresh: refreshBalance } = useSOLBalance(30000)
+  const { sendSOL, loading: sendLoading, error: sendError } = useSendSOL()
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -69,10 +69,26 @@ export default function DashboardPage() {
     setShowConfirmModal(true)
   }
 
-  const handleConfirm = () => {
+  // Passed to ConfirmModal as onConfirmAction for the "send" flow
+  const confirmSendAction = useCallback(async () => {
+    const result = await sendSOL(
+      pendingAction.recipient,
+      parseFloat(pendingAction.amount)
+    )
+    return result
+  }, [sendSOL, pendingAction])
+
+  const handleConfirm = useCallback((sig) => {
     setFormData({ recipient: '', amount: '', memo: '' })
     setPendingAction(null)
-  }
+    if (sig) {
+      setSuccessBanner({ signature: sig })
+      // Auto-dismiss after 12 s
+      setTimeout(() => setSuccessBanner(null), 12000)
+    }
+    // Refresh balance after send
+    refreshBalance()
+  }, [refreshBalance])
 
   const copyAddress = () => {
     if (!publicKey) return
@@ -109,6 +125,39 @@ export default function DashboardPage() {
             </button>
           )}
         </div>
+
+        {/* ── Success Banner ── */}
+        {successBanner && (
+          <div
+            className="flex items-center justify-between gap-4 rounded-2xl px-5 py-4 mb-6"
+            style={{
+              background: 'rgba(20,241,149,0.07)',
+              border: '1px solid rgba(20,241,149,0.2)',
+            }}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <CheckCircle size={18} className="text-green-400 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-white text-sm font-medium">Transaction confirmed on-chain!</p>
+                <a
+                  href={`https://explorer.solana.com/tx/${successBanner.signature}?cluster=devnet`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-mono text-green-400/70 hover:text-green-400 transition-colors truncate"
+                >
+                  {successBanner.signature.slice(0, 12)}…{successBanner.signature.slice(-8)}
+                  <ExternalLink size={10} />
+                </a>
+              </div>
+            </div>
+            <button
+              onClick={() => setSuccessBanner(null)}
+              className="text-white/20 hover:text-white/50 transition-colors shrink-0"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
           <div
@@ -310,12 +359,26 @@ export default function DashboardPage() {
                   <span className="text-green-400 text-xs font-medium">~0.000005 SOL</span>
                 </div>
 
+                {sendError && activeAction === 'send' && (
+                  <div
+                    className="flex items-center gap-2 rounded-xl px-4 py-3"
+                    style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}
+                  >
+                    <AlertCircle size={13} className="text-red-400 shrink-0" />
+                    <p className="text-red-400/80 text-xs leading-relaxed">{sendError}</p>
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  className="btn-primary w-full py-3.5 flex items-center justify-center gap-2 mt-1"
+                  disabled={sendLoading}
+                  className="btn-primary w-full py-3.5 flex items-center justify-center gap-2 mt-1 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Send size={15} />
-                  {connected ? 'Review & Submit' : 'Connect Wallet to Continue'}
+                  {sendLoading ? (
+                    <><Loader size={15} className="animate-spin" /> Sending…</>
+                  ) : (
+                    <><Send size={15} />{connected ? 'Review & Submit' : 'Connect Wallet to Continue'}</>
+                  )}
                 </button>
               </form>
             </div>
@@ -394,8 +457,12 @@ export default function DashboardPage() {
       {showConfirmModal && (
         <ConfirmModal
           action={pendingAction}
-          onClose={() => setShowConfirmModal(false)}
+          onClose={() => {
+            setShowConfirmModal(false)
+            setPendingAction(null)
+          }}
           onConfirm={handleConfirm}
+          onConfirmAction={pendingAction?.type === 'send' ? confirmSendAction : undefined}
         />
       )}
     </div>
