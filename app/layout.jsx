@@ -1,5 +1,6 @@
 import { Inter } from 'next/font/google'
 import './globals.css'
+import '@solana/wallet-adapter-react-ui/styles.css'
 import SolanaProviders from '../components/SolanaProviders'
 
 const inter = Inter({

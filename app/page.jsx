@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
-import WalletModal from '../components/WalletModal'
+import ConnectCTA from '../components/ConnectCTA'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import { ArrowRight, Zap, Shield, Globe, ChevronDown, Sparkles, Lock, Activity } from 'lucide-react'
+import dynamic from 'next/dynamic'
 
 const features = [
   {
@@ -52,15 +54,27 @@ const steps = [
   { num: '03', title: 'Confirm & Broadcast', desc: 'Review the details, sign with your wallet, and watch it land on-chain in under a second.' },
 ]
 
+function CTASection() {
+  const { connected } = useWallet()
+  const { setVisible } = useWalletModal()
+
+  return connected ? (
+    <Link href="/dashboard" className="btn-primary inline-flex items-center gap-2">
+      Open Dashboard <ArrowRight size={16} />
+    </Link>
+  ) : (
+    <button
+      onClick={() => setVisible(true)}
+      className="btn-primary inline-flex items-center gap-2"
+    >
+      Get Started <ArrowRight size={16} />
+    </button>
+  )
+}
+
+const CTASectionDynamic = dynamic(() => Promise.resolve(CTASection), { ssr: false })
+
 export default function LandingPage() {
-  const [showWallet, setShowWallet] = useState(false)
-  const [walletConnected, setWalletConnected] = useState(false)
-
-  const handleConnect = (walletName) => {
-    setWalletConnected(true)
-    setShowWallet(false)
-  }
-
   return (
     <div className="min-h-screen bg-black relative">
       <div
@@ -70,13 +84,11 @@ export default function LandingPage() {
         }}
       />
 
-      <Navbar
-        walletConnected={walletConnected}
-        onConnectWallet={() => setShowWallet(true)}
-      />
+      <Navbar />
 
       <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-4 pt-16">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
+        <div
+          className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
           style={{ background: 'radial-gradient(circle, rgba(153,69,255,0.06) 0%, transparent 70%)' }}
         />
 
@@ -88,7 +100,7 @@ export default function LandingPage() {
           <span className="text-white/60 text-xs font-medium tracking-wide">Built on Solana · Powered by Poof for Seeker</span>
         </div>
 
-        <h1 className="text-5xl sm:text-7xl font-800 font-extrabold text-white leading-[1.05] tracking-tight mb-6 max-w-4xl">
+        <h1 className="text-5xl sm:text-7xl font-extrabold text-white leading-[1.05] tracking-tight mb-6 max-w-4xl">
           Payments,<br />
           <span className="gradient-text">reimagined</span><br />
           for Solana.
@@ -98,23 +110,7 @@ export default function LandingPage() {
           The simplest way for creators and builders to create, send, and track Solana payments — without touching a single line of code.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-xs sm:max-w-none sm:w-auto">
-          {walletConnected ? (
-            <Link href="/dashboard" className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center">
-              Open Dashboard <ArrowRight size={16} />
-            </Link>
-          ) : (
-            <button
-              onClick={() => setShowWallet(true)}
-              className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center"
-            >
-              Connect Wallet <ArrowRight size={16} />
-            </button>
-          )}
-          <Link href="/dashboard" className="btn-glass flex items-center gap-2 w-full sm:w-auto justify-center">
-            Explore Dashboard
-          </Link>
-        </div>
+        <ConnectCTA ctaText="Connect Wallet" showDashboardLink />
 
         <a
           href="#features"
@@ -199,30 +195,12 @@ export default function LandingPage() {
             <p className="text-white/40 text-base mb-8 leading-relaxed">
               Connect your wallet and start creating Solana actions in under 30 seconds.
             </p>
-            {walletConnected ? (
-              <Link href="/dashboard" className="btn-primary inline-flex items-center gap-2">
-                Open Dashboard <ArrowRight size={16} />
-              </Link>
-            ) : (
-              <button
-                onClick={() => setShowWallet(true)}
-                className="btn-primary inline-flex items-center gap-2"
-              >
-                Get Started <ArrowRight size={16} />
-              </button>
-            )}
+            <CTASectionDynamic />
           </div>
         </div>
       </section>
 
       <Footer />
-
-      {showWallet && (
-        <WalletModal
-          onClose={() => setShowWallet(false)}
-          onConnect={handleConnect}
-        />
-      )}
     </div>
   )
 }

@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
-import WalletModal from '../../components/WalletModal'
+import WalletButton from '../../components/WalletButton'
 import ConfirmModal from '../../components/ConfirmModal'
 import { useSOLBalance } from '../../hooks/useSOLBalance'
 import {
@@ -14,7 +15,6 @@ import {
   CheckCircle,
   Activity,
   Wallet,
-  ChevronRight,
   Copy,
   ExternalLink,
   Zap,
@@ -45,27 +45,26 @@ const quickActions = [
   { icon: <RefreshCw size={18} />, label: 'Swap', type: 'swap', color: '#14F195' },
 ]
 
+function shortAddr(pk) {
+  const s = pk.toBase58()
+  return `${s.slice(0, 4)}...${s.slice(-4)}`
+}
+
 export default function DashboardPage() {
-  const [walletConnected, setWalletConnected] = useState(false)
-  const [showWalletModal, setShowWalletModal] = useState(false)
+  const { connected, publicKey } = useWallet()
+  const { setVisible } = useWalletModal()
+
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [activeAction, setActiveAction] = useState('send')
   const [formData, setFormData] = useState({ recipient: '', amount: '', memo: '' })
   const [pendingAction, setPendingAction] = useState(null)
   const [copied, setCopied] = useState(false)
 
-  // Fetch real SOL balance via useSOLBalance hook
-  // TODO: Connect to Poof for Seeker On-Chain Backend here
   const { balance, loading: balanceLoading, error: balanceError, refresh: refreshBalance } = useSOLBalance(30000)
-
-  const handleConnect = (name) => {
-    setWalletConnected(true)
-    setShowWalletModal(false)
-  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!walletConnected) { setShowWalletModal(true); return }
+    if (!connected) { setVisible(true); return }
     setPendingAction({ type: activeAction, ...formData })
     setShowConfirmModal(true)
   }
@@ -76,7 +75,8 @@ export default function DashboardPage() {
   }
 
   const copyAddress = () => {
-    navigator.clipboard.writeText('8xkP9mRv2QnZsLoP3nZQkW7jTyBx1rVpMnCdEfGh3nZQ')
+    if (!publicKey) return
+    navigator.clipboard.writeText(publicKey.toBase58())
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -88,7 +88,7 @@ export default function DashboardPage() {
         style={{ background: 'radial-gradient(ellipse 60% 40% at 80% 0%, rgba(153,69,255,0.07), transparent)' }}
       />
 
-      <Navbar walletConnected={walletConnected} onConnectWallet={() => setShowWalletModal(true)} />
+      <Navbar />
 
       <main className="pt-24 pb-16 px-4 max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
@@ -96,10 +96,16 @@ export default function DashboardPage() {
             <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard</h1>
             <p className="text-white/40 text-sm mt-0.5">Create and manage your Solana actions</p>
           </div>
-          {walletConnected && (
-            <button onClick={copyAddress} className="glass glass-hover flex items-center gap-2 px-3 py-2 rounded-xl text-white/60 hover:text-white text-xs font-mono">
-              <span>8xkP...3nZQ</span>
-              {copied ? <CheckCircle size={13} className="text-green-400" /> : <Copy size={13} />}
+          {connected && publicKey && (
+            <button
+              onClick={copyAddress}
+              className="glass glass-hover flex items-center gap-2 px-3 py-2 rounded-xl text-white/60 hover:text-white text-xs font-mono"
+            >
+              <span>{shortAddr(publicKey)}</span>
+              {copied
+                ? <CheckCircle size={13} className="text-green-400" />
+                : <Copy size={13} />
+              }
             </button>
           )}
         </div>
@@ -113,7 +119,8 @@ export default function DashboardPage() {
               <span className="text-white/40 text-xs uppercase tracking-wider">Portfolio Value</span>
               <Wallet size={15} className="text-white/20" />
             </div>
-            {walletConnected ? (
+
+            {connected ? (
               <>
                 {balanceLoading ? (
                   <div className="flex items-center gap-2 mb-1">
@@ -123,7 +130,10 @@ export default function DashboardPage() {
                 ) : balanceError ? (
                   <div className="mb-1">
                     <p className="text-red-400/70 text-sm">Failed to fetch balance</p>
-                    <button onClick={refreshBalance} className="text-white/30 text-xs hover:text-white/60 transition-colors mt-1">
+                    <button
+                      onClick={refreshBalance}
+                      className="text-white/30 text-xs hover:text-white/60 transition-colors mt-1"
+                    >
                       Retry
                     </button>
                   </div>
@@ -137,19 +147,24 @@ export default function DashboardPage() {
                 )}
                 <div className="mt-4 flex items-center gap-2">
                   <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                    <div className="h-full w-3/4 rounded-full" style={{ background: 'linear-gradient(90deg, #9945FF, #14F195)' }} />
+                    <div
+                      className="h-full w-3/4 rounded-full"
+                      style={{ background: 'linear-gradient(90deg, #9945FF, #14F195)' }}
+                    />
                   </div>
-                  <button onClick={refreshBalance} className="text-white/20 hover:text-white/50 transition-colors" title="Refresh balance">
+                  <button
+                    onClick={refreshBalance}
+                    className="text-white/20 hover:text-white/50 transition-colors"
+                    title="Refresh balance"
+                  >
                     <RefreshCw size={12} />
                   </button>
                 </div>
               </>
             ) : (
-              <div className="flex flex-col items-start gap-3">
+              <div className="flex flex-col items-start gap-4">
                 <p className="text-white/30 text-sm">Connect wallet to view balance</p>
-                <button onClick={() => setShowWalletModal(true)} className="btn-primary text-xs px-4 py-2">
-                  Connect Wallet
-                </button>
+                <WalletButton />
               </div>
             )}
           </div>
@@ -160,7 +175,7 @@ export default function DashboardPage() {
                 key={a.type}
                 onClick={() => setActiveAction(a.type)}
                 className={`glass glass-hover rounded-2xl p-4 flex flex-col items-center gap-3 transition-all ${activeAction === a.type ? 'ring-1' : ''}`}
-                style={activeAction === a.type ? { ringColor: a.color, borderColor: `${a.color}40` } : {}}
+                style={activeAction === a.type ? { borderColor: `${a.color}40` } : {}}
               >
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -232,7 +247,11 @@ export default function DashboardPage() {
                   <div className="flex gap-3">
                     <div className="flex-1">
                       <label className="block text-white/40 text-xs uppercase tracking-wider mb-2">From</label>
-                      <select className="input-glass appearance-none" value={formData.recipient} onChange={(e) => setFormData({ ...formData, recipient: e.target.value })}>
+                      <select
+                        className="input-glass appearance-none"
+                        value={formData.recipient}
+                        onChange={(e) => setFormData({ ...formData, recipient: e.target.value })}
+                      >
                         <option value="SOL">SOL</option>
                         <option value="USDC">USDC</option>
                         <option value="BONK">BONK</option>
@@ -291,9 +310,12 @@ export default function DashboardPage() {
                   <span className="text-green-400 text-xs font-medium">~0.000005 SOL</span>
                 </div>
 
-                <button type="submit" className="btn-primary w-full py-3.5 flex items-center justify-center gap-2 mt-1">
+                <button
+                  type="submit"
+                  className="btn-primary w-full py-3.5 flex items-center justify-center gap-2 mt-1"
+                >
                   <Send size={15} />
-                  {walletConnected ? 'Review & Submit' : 'Connect Wallet to Continue'}
+                  {connected ? 'Review & Submit' : 'Connect Wallet to Continue'}
                 </button>
               </form>
             </div>
@@ -306,7 +328,7 @@ export default function DashboardPage() {
                 <Activity size={15} className="text-white/20" />
               </div>
 
-              {walletConnected ? (
+              {connected ? (
                 <div className="flex flex-col gap-3">
                   {txHistory.map((tx, i) => (
                     <div key={i} className="glass glass-hover rounded-xl p-3.5">
@@ -368,13 +390,6 @@ export default function DashboardPage() {
       </main>
 
       <Footer />
-
-      {showWalletModal && (
-        <WalletModal
-          onClose={() => setShowWalletModal(false)}
-          onConnect={handleConnect}
-        />
-      )}
 
       {showConfirmModal && (
         <ConfirmModal
