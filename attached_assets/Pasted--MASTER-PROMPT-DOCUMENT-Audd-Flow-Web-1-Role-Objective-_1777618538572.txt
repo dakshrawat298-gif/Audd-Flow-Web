@@ -1,0 +1,32 @@
+# MASTER PROMPT DOCUMENT: Audd Flow Web
+
+## 1. Role & Objective
+Act as a world-class Web3 Frontend Engineer and UI/UX Designer. Your goal is to initialize and build the complete frontend architecture for a project named "Audd Flow Web", a premium Solana-based tool. 
+
+## 2. Project Overview (The PRD)
+* **Problem:** Non-technical users need a seamless way to create and interact with Solana payments and actions without complex crypto jargon.
+* **Target User:** Creators, Web3 beginners, and ecosystem builders.
+* **Core Feature:** A clean dashboard where users can input text/parameters to generate Solana transactions. The heavy on-chain backend will be handled separately (via Poof for Seeker), so focus ONLY on the UI and user flow.
+* **User Flow:** Landing Page -> Connect Wallet (UI) -> Main Dashboard -> Input Field -> Action Confirmation Modal.
+
+## 3. UI/UX & Aesthetic Guidelines (Strictly Enforced)
+* **Design Language:** Apple-inspired absolute minimalism. Every pixel must look premium.
+* **Color Palette:** Deep Dark Mode. The main background MUST be pitch black (#000000) or very dark gray (#0A0A0A). 
+* **Elements:** Use high-end 'Glassmorphism' (frosted glass effects, translucent backgrounds, blur filters, and subtle borders) for all cards, navbars, and modals. 
+* **Typography:** Clean, sans-serif fonts (like Inter or San Francisco). High contrast for readability.
+* **Responsiveness:** Must be 100% mobile-first and perfectly optimized for smartphone screens, with touch-friendly buttons.
+
+## 4. Tech Stack & System Design
+* **Environment Setup:** Since this is an empty Node.js workspace, please initialize a new Next.js project.
+* **Styling:** Install and configure Tailwind CSS (essential for the glassmorphic and dark mode requirements).
+* **Wallet Connection:** Build a mock/UI-only "Connect Wallet" button for now.
+
+## 5. Execution Steps & Output Format
+Please generate the code step-by-step:
+1. Initialize the Next.js project structure and install necessary Tailwind dependencies.
+2. Build the Global UI Layout (Glassmorphic Navbar, minimal footer).
+3. Build the Landing Page with a sleek hero section explaining "Audd Flow".
+4. Build the Main Dashboard interface with input fields.
+5. Create dummy/placeholder API functions labeled exactly like this: `// TODO: Connect to Poof for Seeker On-Chain Backend here`. Do not write complex Solana rust/anchor code; just leave clean hooks.
+
+Write production-ready, error-free code. Make it look visually stunning!
