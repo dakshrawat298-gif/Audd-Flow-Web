@@ -1,0 +1,23 @@
+Act as my Senior Frontend Engineer. Our MVP is looking great, but we need to fix a couple of UI/UX issues and add one final polish feature before we generate our workflow logs.
+
+Please execute these tasks step-by-step:
+
+**Task 1: Fix the White Dropdown Issue (Dark Mode)**
+In the Dashboard, when clicking the "FROM" or "TO" token selectors (e.g., in the Swap or Action tabs), the HTML `<select>` or `<option>` dropdown menus are rendering with a default stark white background, which ruins our dark glassmorphic aesthetic.
+- Please restyle these dropdowns. Apply proper Tailwind classes (e.g., `bg-black`, `text-white`, `border-gray-800`, etc.) to the `<select>` and `<option>` elements across all forms to ensure they perfectly match our dark theme.
+
+**Task 2: Implement Live Recent Activity**
+Currently, the "Recent Activity" sidebar uses dummy data. I want this to fetch real data.
+- Please create a new hook, `hooks/useTransactionHistory.ts`, that uses `@solana/web3.js` to fetch the recent transaction signatures for the connected wallet using `connection.getSignaturesForAddress`.
+- Update the Dashboard's "Recent Activity" sidebar to map over this real data. Show the truncated signature (linking to the Solana Explorer on Devnet) and the time elapsed. You can drop the specific "+2.0 SOL" amounts if parsing the full transaction data is too slow/complex; just showing the real recent signatures is enough.
+
+**Task 3: Generate the Final Workflow Logs**
+Once the dropdowns are fixed and the real transaction history is live, please generate our final documentation.
+Create a new file named `AGENT_WORKFLOW_LOGS.md` in the root directory. 
+Write a highly detailed, professional markdown document containing:
+1. **The Project Vision:** Audd Flow Web - seamless Solana payments for non-technical creators.
+2. **The Tech Stack:** Next.js, Tailwind CSS, Solana Web3.js, Wallet Adapter.
+3. **The Backend Engine (Poof for Seeker):** Explain how we used Poof AI to generate the on-chain smart contract logic (Balance fetching, Send SOL, Payment Link generation) natively, skipping Rust/Anchor boilerplate.
+4. **The Frontend Builder (Replit Agent):** Explain how you built the glassmorphic UI, resolved dependency conflicts, integrated the Poof backend, fixed the native HTML select dropdowns for dark mode, and added the live Recent Activity feed to reach a production-ready MVP.
+
+Make it sound extremely professional, emphasizing our "Prompt-to-Prod" agentic engineering approach.

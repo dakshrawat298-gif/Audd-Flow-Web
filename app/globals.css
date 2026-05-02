@@ -146,6 +146,13 @@
     box-shadow: 0 0 0 3px rgba(153, 69, 255, 0.1);
   }
 
+  /* Force dark background on native <select> option lists */
+  .input-glass option,
+  select option {
+    background-color: #0a0a0a;
+    color: #ffffff;
+  }
+
   .gradient-text {
     background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
     -webkit-background-clip: text;

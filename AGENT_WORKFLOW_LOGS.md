@@ -209,7 +209,8 @@ components/
 
 hooks/
 ├── useSOLBalance.ts        # Live balance polling (Poof-generated)
-└── useSendSOL.ts           # SOL transfer hook (Poof-generated)
+├── useSendSOL.ts           # SOL transfer hook (Poof-generated)
+└── useTransactionHistory.ts # Real on-chain tx history via getSignaturesForAddress
 
 lib/
 └── createPaymentLink.ts    # Solana Pay URL builder (Poof-generated)
@@ -230,6 +231,10 @@ lib/
 **Step 5 — Send SOL Integration:** The dashboard's Send SOL form wires `formData.recipient` and `formData.amount` into `useSendSOL`. On form submit, a `ConfirmModal` opens showing transaction details. On user confirmation, `sendSOL()` is called — the wallet adapter triggers the browser wallet's signature popup, the transaction is broadcast, and confirmation is awaited on-chain. Success shows a green banner with the real transaction signature linking to Solana Explorer. Errors show a red retry panel with the wallet's exact error message.
 
 **Step 6 — Payment Link Generation:** The Payment Link form calls `createPaymentLink()` client-side on submit — no network call, no wallet signature, no fee. The resulting `solana:` URI is displayed in a glassmorphic result card with a clipboard copy button that shows a 2-second "Copied!" confirmation state.
+
+**Step 7 — Dark Mode Native Dropdown Fix:** HTML `<select>` and `<option>` elements ignore `backdrop-filter` and glassmorphic styling by design — browsers render their dropdown lists using native OS UI components, which default to white in light-mode OS themes. Replit Agent resolved this by: (a) applying `bg-black text-white border-gray-800` directly to each `<select>` element, (b) adding `bg-black text-white` to each `<option>` element, and (c) adding a global CSS override in `globals.css` targeting `select option { background-color: #0a0a0a; color: #ffffff; }` to catch any additional select elements added in future iterations. This three-layer approach ensures the dark theme holds across Chromium, Firefox, and Safari.
+
+**Step 8 — Live Recent Activity Feed:** The dummy transaction array was replaced with a real on-chain data hook: `hooks/useTransactionHistory.ts`. The hook uses `connection.getSignaturesForAddress(publicKey, { limit: 8 })` from `@solana/web3.js` to fetch the 8 most recent transaction signatures for the connected wallet from devnet. Each entry exposes `signature`, `blockTime` (Unix timestamp), and `err` (null for success, error object for failed transactions). The dashboard's Recent Activity sidebar maps over this real data, rendering each signature as a truncated `6…6` format link to Solana Explorer, with a human-readable time-elapsed string (`Xs ago`, `Xm ago`, `Xh ago`, `Xd ago`) computed from `blockTime`. A loading skeleton state is shown while the fetch is in progress, and the sidebar auto-refreshes whenever the wallet connection changes.
 
 ---
 
@@ -263,9 +268,11 @@ The following table summarizes the precise division of labor between the two AI 
 | Dependency conflict resolution | Replit Agent | Wallet Standard approach, no viem conflict |
 | Hydration bug fix | Replit Agent | `dynamic(..., { ssr: false })` on all wallet components |
 | WalletModalProvider fix | Replit Agent | Added missing context provider layer |
-| Build verification | Replit Agent | Confirmed 1,102 modules, zero errors |
+| Dark mode native dropdown fix | Replit Agent | CSS + Tailwind three-layer approach for `<select>` |
+| Live transaction history | Replit Agent | `hooks/useTransactionHistory.ts` + sidebar wiring |
+| Build verification | Replit Agent | Confirmed 1,100+ modules, zero errors |
 
-**Total lines of application code written by AI agents: ~1,400**
+**Total lines of application code written by AI agents: ~1,600**
 **Manual developer lines of code: 0**
 
 ---
@@ -282,7 +289,7 @@ The following table summarizes the precise division of labor between the two AI 
 - [x] Zero peer dependency conflicts
 - [x] Mobile-responsive glassmorphic UI
 - [ ] Mainnet RPC endpoint (Helius/QuickNode — replace `clusterApiUrl('devnet')`)
-- [ ] Transaction history via `getSignaturesForAddress`
+- [x] Live transaction history via `getSignaturesForAddress`
 - [ ] QR code display for payment links
 - [ ] SPL token support in payment links
 

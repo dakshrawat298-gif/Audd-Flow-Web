@@ -10,6 +10,7 @@ import ConfirmModal from '../../components/ConfirmModal'
 import { useSOLBalance } from '../../hooks/useSOLBalance'
 import { useSendSOL } from '../../hooks/useSendSOL'
 import { createPaymentLink } from '../../lib/createPaymentLink'
+import { useTransactionHistory, timeAgo, shortSig } from '../../hooks/useTransactionHistory'
 import {
   Send,
   ArrowUpRight,
@@ -68,6 +69,7 @@ export default function DashboardPage() {
 
   const { balance, loading: balanceLoading, error: balanceError, refresh: refreshBalance } = useSOLBalance(30000)
   const { sendSOL, loading: sendLoading, error: sendError } = useSendSOL()
+  const { txs, loading: txLoading, refresh: refreshTxs } = useTransactionHistory(8)
 
   // Clear generated link when switching action tabs
   const switchAction = (type) => {
@@ -337,21 +339,21 @@ export default function DashboardPage() {
                     <div className="flex-1">
                       <label className="block text-white/40 text-xs uppercase tracking-wider mb-2">From</label>
                       <select
-                        className="input-glass appearance-none"
+                        className="input-glass appearance-none bg-black text-white border-gray-800"
                         value={formData.recipient}
                         onChange={(e) => setFormData({ ...formData, recipient: e.target.value })}
                       >
-                        <option value="SOL">SOL</option>
-                        <option value="USDC">USDC</option>
-                        <option value="BONK">BONK</option>
+                        <option className="bg-black text-white" value="SOL">SOL</option>
+                        <option className="bg-black text-white" value="USDC">USDC</option>
+                        <option className="bg-black text-white" value="BONK">BONK</option>
                       </select>
                     </div>
                     <div className="flex-1">
                       <label className="block text-white/40 text-xs uppercase tracking-wider mb-2">To</label>
-                      <select className="input-glass appearance-none">
-                        <option value="USDC">USDC</option>
-                        <option value="SOL">SOL</option>
-                        <option value="BONK">BONK</option>
+                      <select className="input-glass appearance-none bg-black text-white border-gray-800">
+                        <option className="bg-black text-white" value="USDC">USDC</option>
+                        <option className="bg-black text-white" value="SOL">SOL</option>
+                        <option className="bg-black text-white" value="BONK">BONK</option>
                       </select>
                     </div>
                   </div>
@@ -500,49 +502,80 @@ export default function DashboardPage() {
                 <Activity size={15} className="text-white/20" />
               </div>
 
-              {connected ? (
-                <div className="flex flex-col gap-3">
-                  {txHistory.map((tx, i) => (
-                    <div key={i} className="glass glass-hover rounded-xl p-3.5">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-7 h-7 rounded-lg flex items-center justify-center"
-                            style={{
-                              background: tx.type === 'Receive' ? 'rgba(20,241,149,0.1)' : 'rgba(153,69,255,0.1)',
-                              color: tx.type === 'Receive' ? '#14F195' : '#9945FF',
-                            }}
-                          >
-                            {tx.type === 'Receive' ? <ArrowUpRight size={13} /> : <Send size={13} />}
-                          </div>
-                          <span className="text-white text-sm font-medium">{tx.type}</span>
-                        </div>
-                        <span
-                          className="text-sm font-semibold"
-                          style={{ color: tx.type === 'Receive' ? '#14F195' : 'rgba(255,255,255,0.8)' }}
-                        >
-                          {tx.amount}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <CheckCircle size={11} className="text-green-400" />
-                          <span className="text-white/30 text-xs">{tx.status}</span>
-                          <span className="text-white/20 text-xs">· {tx.time}</span>
-                        </div>
-                        <button className="text-white/20 hover:text-white/50 transition-colors">
-                          <ExternalLink size={11} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
+              {!connected ? (
                 <div className="flex flex-col items-center justify-center h-48 text-center gap-3">
                   <div className="w-10 h-10 rounded-xl glass flex items-center justify-center">
                     <Clock size={18} className="text-white/20" />
                   </div>
                   <p className="text-white/30 text-sm">Connect your wallet to see activity</p>
+                </div>
+              ) : txLoading ? (
+                <div className="flex flex-col gap-3">
+                  {[1, 2, 3].map((n) => (
+                    <div key={n} className="glass rounded-xl p-3.5 animate-pulse">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-white/5" />
+                          <div className="h-3 w-16 bg-white/5 rounded" />
+                        </div>
+                        <div className="h-3 w-12 bg-white/5 rounded" />
+                      </div>
+                      <div className="h-2.5 w-24 bg-white/5 rounded" />
+                    </div>
+                  ))}
+                </div>
+              ) : txs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 text-center gap-3">
+                  <div className="w-10 h-10 rounded-xl glass flex items-center justify-center">
+                    <Activity size={18} className="text-white/20" />
+                  </div>
+                  <p className="text-white/30 text-sm">No transactions found on devnet</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {txs.map((tx) => (
+                    <div key={tx.signature} className="glass glass-hover rounded-xl p-3.5">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                            style={{
+                              background: tx.err ? 'rgba(239,68,68,0.1)' : 'rgba(153,69,255,0.1)',
+                              color: tx.err ? '#f87171' : '#9945FF',
+                            }}
+                          >
+                            {tx.err ? <AlertCircle size={13} /> : <Send size={13} />}
+                          </div>
+                          <span className="text-white/60 text-xs font-mono">
+                            {shortSig(tx.signature)}
+                          </span>
+                        </div>
+                        <span className="text-white/20 text-xs shrink-0 ml-2">
+                          {timeAgo(tx.blockTime)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          {tx.err ? (
+                            <AlertCircle size={11} className="text-red-400" />
+                          ) : (
+                            <CheckCircle size={11} className="text-green-400" />
+                          )}
+                          <span className="text-white/30 text-xs">
+                            {tx.err ? 'failed' : 'confirmed'}
+                          </span>
+                        </div>
+                        <a
+                          href={`https://explorer.solana.com/tx/${tx.signature}?cluster=devnet`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-white/20 hover:text-white/50 transition-colors"
+                        >
+                          <ExternalLink size={11} />
+                        </a>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
