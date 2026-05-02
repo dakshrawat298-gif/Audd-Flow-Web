@@ -2,6 +2,8 @@
 
 import { useMemo } from 'react'
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react'
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
+import '@solana/wallet-adapter-react-ui/styles.css'
 import { clusterApiUrl } from '@solana/web3.js'
 
 // Wallet Standard wallets (Phantom, Solflare, Backpack, etc.) auto-register
@@ -20,7 +22,9 @@ export default function SolanaProviders({ children }) {
   return (
     <ConnectionProvider endpoint={ENDPOINT}>
       <WalletProvider wallets={wallets} autoConnect={false}>
-        {children}
+        <WalletModalProvider>
+          {children}
+        </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   )
