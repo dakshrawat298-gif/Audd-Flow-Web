@@ -11,6 +11,7 @@ import { useSOLBalance } from '../../hooks/useSOLBalance'
 import { useSendSOL } from '../../hooks/useSendSOL'
 import { createPaymentLink } from '../../lib/createPaymentLink'
 import { useTransactionHistory, timeAgo, shortSig } from '../../hooks/useTransactionHistory'
+import { QRCode } from 'react-qr-code'
 import {
   Send,
   ArrowUpRight,
@@ -473,6 +474,19 @@ export default function DashboardPage() {
                     style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)' }}
                   >
                     {paymentLinkUrl}
+                  </div>
+
+                  {/* QR Code — white background so it's scannable on dark UI */}
+                  <div className="flex justify-center mb-4">
+                    <div className="bg-white p-4 rounded-2xl inline-block shadow-lg">
+                      <QRCode
+                        value={paymentLinkUrl}
+                        size={180}
+                        bgColor="#ffffff"
+                        fgColor="#000000"
+                        level="M"
+                      />
+                    </div>
                   </div>
 
                   <button
