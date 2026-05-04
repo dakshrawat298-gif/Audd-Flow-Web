@@ -304,3 +304,5 @@ Audd Flow Web proves that the combination of **Poof for Seeker** (on-chain logic
 *Generated as part of the Superteam Earn Grant — Agentic Workflow Submission*
 *Project: Audd Flow Web | Stack: Next.js 14 · Tailwind CSS · Solana Wallet Adapter · @solana/web3.js*
 *Agents: Poof for Seeker (on-chain logic) · Replit Agent (frontend)*
+
+[x] Flawless Devnet wallet connection & live SOL balance fetch via standard Solana packages. UI perfectly preserved.

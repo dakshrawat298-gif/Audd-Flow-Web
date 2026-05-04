@@ -28,12 +28,34 @@ export function useSOLBalance(pollIntervalMs = 0) {
   }, [connection, publicKey]);
 
   useEffect(() => {
-    refresh();
-    if (pollIntervalMs > 0) {
-      const id = setInterval(refresh, pollIntervalMs);
-      return () => clearInterval(id);
+    if (!publicKey) {
+      setBalance(null);
+      return;
     }
-  }, [refresh, pollIntervalMs]);
+
+    // Fetch initial balance immediately
+    refresh();
+
+    // Subscribe to real-time account changes for instant balance updates
+    const subscriptionId = connection.onAccountChange(
+      publicKey,
+      (updatedAccountInfo) => {
+        setBalance(updatedAccountInfo.lamports / LAMPORTS_PER_SOL);
+      },
+      'confirmed'
+    );
+
+    // Optional polling as a fallback (e.g. for RPC providers that don't push WS events)
+    let pollId: ReturnType<typeof setInterval> | undefined;
+    if (pollIntervalMs > 0) {
+      pollId = setInterval(refresh, pollIntervalMs);
+    }
+
+    return () => {
+      connection.removeAccountChangeListener(subscriptionId);
+      if (pollId !== undefined) clearInterval(pollId);
+    };
+  }, [connection, publicKey, pollIntervalMs, refresh]);
 
   return { balance, loading, error, refresh };
 }

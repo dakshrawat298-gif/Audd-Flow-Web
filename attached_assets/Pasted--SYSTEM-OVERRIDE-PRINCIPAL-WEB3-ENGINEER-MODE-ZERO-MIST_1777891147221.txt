@@ -1,0 +1,117 @@
+# ߔ SYSTEM OVERRIDE: PRINCIPAL WEB3 ENGINEER MODE (ZERO MISTAKE PROTOCOL) ߔ
+You are now operating as a World-Class Senior Solana & Next.js 14 Engineer. Your execution must be surgical, precise, and completely flawless. You have ZERO tolerance for hallucinations, breaking changes, or UI degradation. Think step-by-step before making any file modifications.
+
+## PREREQUISITE:
+Read `AGENT_WORKFLOW_LOGS.md` immediately to understand our exact architecture and current state. Do not proceed without this context.
+
+## ߚ CRITICAL DEPENDENCY RULES (PREVENTING FATAL CRASHES):
+The previous build crashed due to native module extraction errors (`usb`/`node-gyp`). You will avoid this completely.
+1. DO NOT install or reference `@solana/wallet-adapter-wallets`.
+2. Install ONLY standard modern primitives: `@solana/wallet-adapter-base`, `@solana/wallet-adapter-react`, `@solana/wallet-adapter-react-ui`, and `@solana/web3.js`.
+3. If installing packages, strictly use: `npm install --legacy-peer-deps` to ensure the Next.js build remains stable.
+
+## YOUR MISSION (SURGICAL LOGIC INJECTION):
+We are replacing dummy UI data with real Solana Devnet logic.
+
+**Step 1: Setup Global Provider**
+* Create `WalletContextProvider.tsx` using the exact raw code provided below. Wrap the Next.js app layout (`layout.tsx` or `_app.tsx`) with this provider so the context is globally available. Ensure network is `devnet`.
+
+**Step 2: Inject Logic, STRICTLY PRESERVE UI**
+* Extract ONLY the pure React logic (`useConnection`, `useWallet`, `useEffect` for fetching/subscribing balance via `LAMPORTS_PER_SOL`) from the `BalanceDisplay.tsx` snippet below.
+* **UI CONSTRAINT:** DO NOT copy the inline styles from the snippet. Our app uses a premium Glassmorphism and Dark Mode aesthetic powered by Tailwind CSS. You are strictly forbidden from breaking or overriding existing Tailwind classes.
+* Inject the logic into our existing Dashboard component.
+* Replace the hardcoded dummy balance with the live Devnet `balance` state.
+* Integrate the `WalletMultiButton` from `@solana/wallet-adapter-react-ui`, but wrap/style it to perfectly match our existing UI design system.
+
+## MANDATORY FINAL CHECK & LOGGING:
+Do not stop until the app compiles successfully without errors. Once running and verified, append this exact line to `AGENT_WORKFLOW_LOGS.md`:
+`[x] Flawless Devnet wallet connection & live SOL balance fetch via standard Solana packages. UI perfectly preserved.`
+
+---
+### PURE RAW CODE TO INTEGRATE (DO NOT COPY STYLES):
+
+// WalletContextProvider.tsx
+import React, { FC, ReactNode, useMemo } from 'react';
+import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { clusterApiUrl } from '@solana/web3.js';
+import '@solana/wallet-adapter-react-ui/styles.css';
+
+interface WalletContextProviderProps {
+    children: ReactNode;
+}
+
+export const WalletContextProvider: FC<WalletContextProviderProps> = ({ children }) => {
+    const endpoint = useMemo(() => clusterApiUrl('devnet'), []);
+    const wallets = useMemo(() => [], []);
+
+    return (
+        <ConnectionProvider endpoint={endpoint}>
+            <WalletProvider wallets={wallets} autoConnect>
+                <WalletModalProvider>
+                    {children}
+                </WalletModalProvider>
+            </WalletProvider>
+        </ConnectionProvider>
+    );
+};
+
+// BalanceDisplay.tsx (EXTRACT PURE LOGIC ONLY, DISCARD ALL INLINE STYLES)
+import React, { FC, useEffect, useState } from 'react';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+
+export const BalanceDisplay: FC = () => {
+    const { connection } = useConnection();
+    const { publicKey } = useWallet();
+    const [balance, setBalance] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (!publicKey) {
+            setBalance(null);
+            return;
+        }
+
+        const fetchInitialBalance = async () => {
+            try {
+                const currentBalance = await connection.getBalance(publicKey, 'confirmed');
+                setBalance(currentBalance / LAMPORTS_PER_SOL);
+            } catch (error) {
+                console.error('Failed to fetch initial balance:', error);
+            }
+        };
+
+        fetchInitialBalance();
+
+        const subscriptionId = connection.onAccountChange(
+            publicKey,
+            (updatedAccountInfo) => {
+                setBalance(updatedAccountInfo.lamports / LAMPORTS_PER_SOL);
+            },
+            'confirmed'
+        );
+
+        return () => {
+            connection.removeAccountChangeListener(subscriptionId);
+        };
+    }, [connection, publicKey]);
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '40px' }}>
+            <WalletMultiButton />
+            
+            <div style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '1.2rem' }}>
+                {!publicKey ? (
+                    <p>Please connect your wallet to view Devnet balance.</p>
+                ) : balance === null ? (
+                    <p>Fetching live balance...</p>
+                ) : (
+                    <p>
+                        <strong>Live Devnet Balance:</strong> {balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 5 })} SOL
+                    </p>
+                )}
+            </div>
+        </div>
+    );
+};
